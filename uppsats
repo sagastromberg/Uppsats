@@ -1,0 +1,77 @@
+#fixing the dataset 
+import pandas as pd
+filepath = 'C:/Users/Saga.Stromberg/Desktop/uppsats/uppsats8.csv'
+df = pd.read_csv(filepath)
+
+#granted or granted lower amount binary
+value = "granted"
+if value == "granted":
+    binary_var = 0
+else:
+    binary_var = 1
+df['binary_granted'] = binary_var
+
+#summarize apartment + housing credit
+df['housingcredit'] = df['UC_CreditusedApartment'] + df['UC_CreditusedHouse']
+df['housingcredit'].fillna(0, inplace=True)
+
+#diff between stated and real income
+df['diff_income'] = df['StatedAnnualIncome'] + df['UC_AnnualIncome']
+
+#nan values in debtcollection
+df['IsSentToDebtCollection'].fillna('False', inplace=True)
+df['IsSentToDebtCollection'] = df['IsSentToDebtCollection'].astype(bool)
+df['binary_debtcollection'] = df['IsSentToDebtCollection'].map({True: 1, False: 0})
+
+df['LoanApplicationDate'] = pd.to_datetime(df['LoanApplicationDate'])
+data_subset = df[['Age', 'NumberOfCars','NumberOfChildren', 'NumberOfCars','RentAmount', 'UC_CreditusedApartment', 'UC_CreditusedHouse',
+       'UC_CreditusedBlanco', 'UC_CreditusedCollector', 'UC_NumberOfCreditors','NumberOfApplicants','ApplicationAmount', 'RepaymentMonths',
+       'Insurance','Kalp','binary_granted', 'housingcredit', 'diff_income', 'binary_debtcollection', 'LoanApplicationDate']]
+data_subset = data_subset.fillna(df.mean())
+print(data_subset.head(10))
+
+print(df.columns)
+#df.head(5)
+
+
+
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import TimeSeriesSplit
+import statsmodels.api as sm
+from sklearn.metrics import accuracy_score
+
+# split the data into input (X) and output (y) variables
+X = data_subset.drop(['LoanApplicationDate', 'binary_debtcollection'], axis=1)
+y = data_subset['binary_debtcollection']
+
+# create the TimeSeriesSplit object
+tscv = TimeSeriesSplit(n_splits=2)
+
+# split the data into training and test sets
+for train_index, test_index in tscv.split(X):
+    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+    print("TRAIN:", train_index, "TEST:", test_index)
+    print("X_train:", X_train)
+    print("X_test:", X_test)
+    print("y_train:", y_train)
+    print("y_test:", y_test)
+
+# create the logistic regression model
+clf = LogisticRegression()
+
+# fit the model
+clf.fit(X_train, y_train)
+
+# save predictions of test data
+predictions = clf.predict(X_test)
+
+#accuracy
+accuracy = accuracy_score(y_test, predictions)
+
+print("Predictions:", predictions)
+print("Accuracy:", accuracy)
+
+
+
